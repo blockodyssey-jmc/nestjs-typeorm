@@ -54,34 +54,38 @@ export class BuyRepository {
 
     async createByQueryRunner(id: number) {
         const queryRunner = this.dataSource.createQueryRunner()
+
         await queryRunner.connect()
 
         await queryRunner.startTransaction()
 
-        const aMarket = await queryRunner.manager.findOne<Market>(Market, { where: { id: id } }).catch((e) => {
-            console.log(`findAll 데이터 조회 에러발생 : ${e}`)
-            throw new ConflictException(`DB 유저 리스트 조회 에러발생`)
-        })
+        const aMarket = await queryRunner.manager.query("SELECT * FROM markets WHERE id = ?", [id])
 
-        if (aMarket == null) {
+        /*         const aMarket = await queryRunner.manager.findOne<Market>(Market, { where: { id: id } }).catch((e) => {
+                    console.log(`findAll 데이터 조회 에러발생 : ${e}`)
+                    throw new ConflictException(`DB 유저 리스트 조회 에러발생`)
+                }) */
+
+        if (aMarket[0] == null) {
             console.log(`DB Market Not Found`)
             throw new NotFoundException(`DB market 정보 없음`)
         }
         try {
-            const aBuy = new Buy()
-            aBuy.market = aMarket
-            aBuy.name = aMarket.name
-            aBuy.desc = aMarket.desc
-            aBuy.orderDate = new Date()
+            /*         const aBuy = new Buy()
+                    aBuy.market = aMarket
+                    aBuy.name = aMarket.name
+                    aBuy.desc = aMarket.desc
+                    aBuy.orderDate = new Date() */
+            // const result = await queryRunner.manager.save(aBuy)
 
-            const result = await queryRunner.manager.save(aBuy)
+            const result = await queryRunner.manager.query("INSERT INTO buys (marketId, name, `desc`, order_date) VALUES (?,?,?,?)", [aMarket[0].id, aMarket[0].name, aMarket[0].desc, new Date()])
             await queryRunner.commitTransaction()
 
             return result
         } catch (err) {
             await queryRunner.rollbackTransaction()
-            
-            console.log("DB Buy 저장 에러 발생 ")
+
+            console.log("DB Buy 저장 에러 발생 ", err)
             throw new ConflictException(`DB Buy 정보 저장 에러 발생`)
         } finally {
             await queryRunner.release()
